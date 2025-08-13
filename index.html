@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Mario Contábil - Controle por Toque</title>
+<title>Mario Contábil - Controle por Toque Dividido</title>
 <style>
   html, body {
     margin: 0; padding: 0; height: 100%; overflow: hidden;
@@ -34,7 +34,7 @@
   }
   #mensagem {
     position: fixed;
-    top: 84px; /* logo abaixo do #fase */
+    top: 84px;
     left: 50%;
     transform: translateX(-50%);
     background: #f87171cc;
@@ -54,7 +54,7 @@
   canvas {
     display: block;
     position: fixed;
-    top: 96px; /* altura do #info + #fase + #mensagem */
+    top: 96px;
     left: 0;
     width: 100vw;
     height: calc(100vh - 96px);
@@ -68,7 +68,7 @@
 <div id="info">Pontos: 0 | Dinheiro: R$ 10.000</div>
 <div id="fase">Fase: 1</div>
 <div id="mensagem" role="alert" aria-live="assertive"></div>
-<canvas id="game" aria-label="Jogo Mario Contábil com controle por toque"></canvas>
+<canvas id="game" aria-label="Jogo Mario Contábil com controle por toque dividido"></canvas>
 
 <script>
   const canvas = document.getElementById('game');
@@ -108,7 +108,6 @@
   window.addEventListener('resize', ajustarTamanhoCanvas);
 
   const GRAVITY = 0.7;
-  let keys = {};
 
   let pontos = 0;
   let dinheiro = 10000;
@@ -120,7 +119,8 @@
     width: 40,
     height: 40,
     dy: 0,
-    speed: 3,  // velocidade fixa para andar para direita
+    speed: 3,
+    direction: 0,  // -1 para esquerda, 1 para direita, 0 parado
     onGround: false,
     color: '#0f4c81',
   };
@@ -231,8 +231,8 @@
   }
 
   function update() {
-    // Andar sempre para frente
-    player.x += player.speed;
+    // Atualiza a posição horizontal de acordo com direção
+    player.x += player.speed * player.direction;
 
     player.dy += GRAVITY;
     player.y += player.dy;
@@ -251,6 +251,7 @@
       }
     }
 
+    // Limites do canvas
     if(player.x < 0) player.x = 0;
     if(player.x + player.width > canvas.width) player.x = canvas.width - player.width;
 
@@ -264,7 +265,7 @@
         pontos = Math.max(0, pontos - 100);
         playDamage();
         mostrarMensagem(`Você foi penalizado! ${enemy.nome} - Pague R$300 de multa.`);
-        player.x -= player.speed * 2;
+        player.x -= player.speed * player.direction * 3;
         atualizarInfo();
       }
     }
@@ -362,15 +363,48 @@
     document.getElementById('info').textContent = `Pontos: ${pontos} | Dinheiro: R$ ${dinheiro}`;
   }
 
-  // Controle por toque: só pular quando tocar na tela
+  // Controle por toque dividido:
+  // Esquerda da tela -> andar esquerda
+  // Direita da tela -> andar direita
+  // Centro da tela -> pular
+  let touchId = null;
+
   window.addEventListener('touchstart', e => {
-    if(player.onGround) {
-      player.dy = -14;
-      player.onGround = false;
-      playJump();
+    if(touchId !== null) return; // só 1 toque ativo
+
+    const t = e.changedTouches[0];
+    const x = t.clientX;
+    const w = window.innerWidth;
+
+    touchId = t.identifier;
+
+    if (x < w * 0.33) {
+      // esquerda
+      player.direction = -1;
+    } else if (x > w * 0.66) {
+      // direita
+      player.direction = 1;
+    } else {
+      // meio: pular
+      if(player.onGround) {
+        player.dy = -14;
+        player.onGround = false;
+        playJump();
+      }
+      player.direction = 0;
     }
     e.preventDefault();
-  });
+  }, {passive:false});
+
+  window.addEventListener('touchend', e => {
+    for (let t of e.changedTouches) {
+      if(t.identifier === touchId) {
+        player.direction = 0;
+        touchId = null;
+        e.preventDefault();
+      }
+    }
+  }, {passive:false});
 
   initFase(faseAtual);
   function loop() {
