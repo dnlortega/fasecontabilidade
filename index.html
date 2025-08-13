@@ -1,570 +1,428 @@
 <!DOCTYPE html>
-<html lang="pt-BR" >
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Monopoly Contábil Profissional com Ranking</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    /* Reset e base */
-    * {
-      box-sizing: border-box;
-    }
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #e7f0fd;
-      color: #222;
-      display: flex;
-      min-height: 100vh;
-      align-items: flex-start;
-      justify-content: center;
-      padding: 1rem;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-    h1, h2, p {
-      margin: 0.3rem 0 1rem;
-      text-align: center;
-      color: #0a3d62;
-      text-shadow: 1px 1px 3px #a4b0be;
-    }
-
-    /* Container geral tabuleiro + ranking */
-    #app {
-      display: flex;
-      max-width: 900px;
-      width: 100%;
-      gap: 1rem;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    /* Container do jogo */
-    #container {
-      max-width: 480px;
-      width: 100%;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 12px 25px rgba(0,0,0,0.15);
-      padding: 1rem 1.5rem 4.5rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      position: relative;
-      flex-shrink: 0;
-    }
-
-    /* Tabuleiro responsivo */
-    #tabuleiro {
-      display: grid;
-      grid-template-columns: repeat(11, 1fr);
-      grid-template-rows: repeat(11, 1fr);
-      gap: 3px;
-      width: 100%;
-      max-width: 420px;
-      aspect-ratio: 1 / 1;
-      margin-bottom: 1rem;
-      border-radius: 12px;
-      box-shadow: 0 0 15px #1e90ff66;
-      background: #f0f4f9;
-      user-select: none;
-    }
-    .casa {
-      background: linear-gradient(145deg, #ffffff, #d4e0f1);
-      border-radius: 8px;
-      box-shadow: inset 3px 3px 6px #b8c6db,
-                  inset -3px -3px 6px #ffffff;
-      border: 1.5px solid #1e90ff;
-      font-size: 0.75em;
-      padding: 6px 5px 6px 5px;
-      color: #1e3c72;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      transition: background 0.3s ease;
-      cursor: default;
-      text-align: center;
-      line-height: 1.1em;
-      position: relative;
-    }
-    .casa:hover {
-      background: linear-gradient(145deg, #d1e6ff, #a8cbff);
-      box-shadow: 0 0 15px #5599ff;
-      color: #103c9f;
-    }
-    .vazio {
-      background: transparent;
-      border: none;
-      pointer-events: none;
-    }
-    .icon {
-      font-size: 1.6em;
-      margin-bottom: 4px;
-      filter: drop-shadow(0 0 1px #4267b2);
-      user-select: none;
-    }
-    .jogador {
-      font-size: 1.3em;
-      font-weight: 700;
-      line-height: 1.1em;
-      margin-top: 6px;
-      color: #0a3d62;
-      text-shadow: 1px 1px 1px #a0b8ff;
-      word-break: break-word;
-      user-select: none;
-    }
-
-    /* Cores por categoria (gradientes) */
-    .imposto {
-      background: linear-gradient(145deg, #ffd6d6, #ff9a9a);
-      border-color: #ff5c5c;
-      color: #7a0000;
-    }
-    .imposto:hover {
-      background: linear-gradient(145deg, #ff9e9e, #ff6262);
-      box-shadow: 0 0 20px #ff0000cc;
-      color: #4a0000;
-    }
-    .auditoria {
-      background: linear-gradient(145deg, #c6deff, #7abaff);
-      border-color: #2b87ff;
-      color: #003d7a;
-    }
-    .auditoria:hover {
-      background: linear-gradient(145deg, #7fb8ff, #338dff);
-      box-shadow: 0 0 20px #0057ffcc;
-      color: #002655;
-    }
-    .custos {
-      background: linear-gradient(145deg, #d4f4d7, #91d77f);
-      border-color: #53a938;
-      color: #2f5600;
-    }
-    .custos:hover {
-      background: linear-gradient(145deg, #a3e88a, #63b72c);
-      box-shadow: 0 0 20px #40a30dcc;
-      color: #214300;
-    }
-    .relatorio {
-      background: linear-gradient(145deg, #fff8cc, #ffe066);
-      border-color: #ffdb4d;
-      color: #7a6b00;
-    }
-    .relatorio:hover {
-      background: linear-gradient(145deg, #ffea60, #ffcd33);
-      box-shadow: 0 0 20px #f6c90ccc;
-      color: #4a4200;
-    }
-    .outros {
-      background: linear-gradient(145deg, #e4e5e7, #b3b5b9);
-      border-color: #8f9297;
-      color: #42464b;
-    }
-    .outros:hover {
-      background: linear-gradient(145deg, #b1b4b9, #7a7d83);
-      box-shadow: 0 0 20px #666a70cc;
-      color: #222428;
-    }
-
-    /* Painel fixo no rodapé */
-    #painel {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      max-width: 480px;
-      background: #0a3d62;
-      color: white;
-      padding: 0.9rem 1rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 -3px 10px #113f7dcc;
-      border-top-left-radius: 12px;
-      border-top-right-radius: 12px;
-      font-weight: 600;
-      user-select: none;
-      z-index: 10;
-    }
-    #status {
-      font-size: 1em;
-      max-width: 65%;
-      word-wrap: break-word;
-    }
-    #painel button {
-      background: #1e90ff;
-      border: none;
-      border-radius: 8px;
-      color: white;
-      font-size: 1.2em;
-      padding: 0.6rem 1.3rem;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 5px 15px #1e90ffaa;
-      transition: background 0.3s ease, box-shadow 0.3s ease;
-      user-select: none;
-    }
-    #painel button:hover {
-      background: #1266cc;
-      box-shadow: 0 7px 20px #1266ccbb;
-    }
-    #painel button:active {
-      background: #0a3d62;
-      box-shadow: none;
-    }
-
-    /* Formulário de configuração */
-    #config {
-      width: 100%;
-      max-width: 480px;
-      background: white;
-      padding: 1.5rem 2rem 2rem;
-      border-radius: 12px;
-      box-shadow: 0 12px 25px rgba(0,0,0,0.12);
-      margin-bottom: 2rem;
-      user-select: none;
-    }
-    #config h2 {
-      margin-bottom: 0.5rem;
-      color: #0a3d62;
-      text-shadow: 1px 1px 2px #a4b0be;
-    }
-    #config p {
-      font-size: 0.9rem;
-      margin-bottom: 1rem;
-      color: #334d6e;
-    }
-    #config input {
-      width: 100%;
-      font-size: 1.1em;
-      padding: 0.7rem 1rem;
-      margin-bottom: 1rem;
-      border-radius: 8px;
-      border: 2px solid #a4b0be;
-      transition: border-color 0.3s ease;
-      outline-offset: 2px;
-      outline-color: transparent;
-      color: #0a3d62;
-      font-weight: 600;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    #config input::placeholder {
-      color: #a4b0be;
-      font-weight: 500;
-    }
-    #config input:focus {
-      border-color: #1e90ff;
-      outline-color: #1e90ff;
-    }
-    #config button {
-      width: 100%;
-      background: #1e90ff;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 0.8rem;
-      font-size: 1.2em;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 8px 18px #1e90ffaa;
-      transition: background 0.3s ease, box-shadow 0.3s ease;
-      user-select: none;
-    }
-    #config button:hover {
-      background: #1266cc;
-      box-shadow: 0 10px 25px #1266ccbb;
-    }
-    #config button:active {
-      background: #0a3d62;
-      box-shadow: none;
-    }
-    #error {
-      color: #cc4444;
-      font-weight: 700;
-      margin-top: -0.5rem;
-      margin-bottom: 1rem;
-      min-height: 1.3em;
-      text-align: center;
-      user-select: none;
-    }
-
-    /* Ranking lateral */
-    #ranking {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 14px 30px rgba(0,0,0,0.15);
-      padding: 1rem 1.5rem;
-      max-width: 300px;
-      width: 100%;
-      flex-shrink: 0;
-      user-select: none;
-      display: flex;
-      flex-direction: column;
-      gap: 0.8rem;
-      height: fit-content;
-    }
-    #ranking h2 {
-      color: #0a3d62;
-      text-shadow: 1px 1px 2px #a4b0be;
-      margin-bottom: 0.8rem;
-      font-weight: 800;
-      font-size: 1.5rem;
-    }
-    .player-rank {
-      background: #f0f7ff;
-      border-radius: 12px;
-      box-shadow: inset 2px 2px 6px #c7d9ff,
-                  inset -2px -2px 6px #ffffff;
-      padding: 0.7rem 1rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      font-weight: 700;
-      color: #1e3c72;
-      transition: background 0.3s ease;
-      border-left: 6px solid transparent;
-    }
-    .player-rank:hover {
-      background: #d2e3ff;
-      border-left-color: #1e90ff;
-      cursor: default;
-    }
-    .player-rank .avatar {
-      font-size: 2.3rem;
-      text-shadow: 1px 1px 2px #8fbaff;
-      user-select: none;
-      width: 48px;
-      text-align: center;
-    }
-    .player-rank .info {
-      display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
-      flex-grow: 1;
-    }
-    .player-rank .info .name {
-      font-size: 1.2rem;
-      color: #0a3d62;
-      font-weight: 800;
-    }
-    .player-rank .info .score {
-      font-size: 1rem;
-      color: #4a6ca8;
-      font-weight: 600;
-    }
-    .player-rank .pos {
-      font-weight: 900;
-      font-size: 1.4rem;
-      width: 28px;
-      text-align: center;
-      color: #0a3d62;
-      user-select: none;
-    }
-
-    /* Scroll interno para ranking se muita altura */
-    #ranking {
-      max-height: 480px;
-      overflow-y: auto;
-    }
-
-    /* Responsividade */
-    @media (max-width: 850px) {
-      #app {
-        flex-direction: column;
-        align-items: center;
-      }
-      #ranking {
-        max-width: 480px;
-        width: 90vw;
-        margin-bottom: 1rem;
-      }
-      #container {
-        max-width: 480px;
-        width: 90vw;
-      }
-      #painel {
-        max-width: 90vw !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-      }
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Mario Contábil - Pessoa Física com Touch, Fases e Efeitos</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #f0f4f8;
+    font-family: 'Arial', sans-serif;
+    touch-action: none;
+    user-select: none;
+  }
+  #info {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: #e0f2fecc;
+    color: #0f4c81;
+    padding: 12px 20px;
+    font-weight: 700;
+    text-align: center;
+    z-index: 20;
+    box-shadow: 0 4px 8px rgba(15,76,129,0.3);
+  }
+  #fase {
+    position: fixed;
+    top: 48px; left: 0; right: 0;
+    text-align: center;
+    font-weight: 600;
+    color: #2563eb;
+    user-select: none;
+    z-index: 20;
+  }
+  canvas {
+    display: block;
+    position: fixed;
+    top: 72px; /* altura do #info + #fase */
+    left: 0;
+    width: 100vw;
+    height: calc(100vh - 72px);
+    background: linear-gradient(to top, #a3cef1 0%, #f0f4f8 100%);
+    border: none;
+    z-index: 10;
+  }
+  /* Controles touch */
+  #controls {
+    position: fixed;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px;
+    display: flex;
+    justify-content: space-between;
+    z-index: 30;
+    user-select: none;
+  }
+  .btn {
+    background: #0f4c81cc;
+    color: white;
+    font-size: 28px;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px #0f4c81aa;
+    touch-action: manipulation;
+    user-select: none;
+  }
+  .btn:active {
+    background: #0f4c81;
+    box-shadow: 0 2px 5px #0f4c81ff inset;
+  }
+</style>
 </head>
 <body>
-  <div id="app">
-    <div id="container">
-      <div id="config">
-        <h2>Configurar Jogadores</h2>
-        <p>Digite os nomes dos jogadores (mínimo 2, máximo 4):</p>
-        <input type="text" id="player1" placeholder="Nome do jogador 1" />
-        <input type="text" id="player2" placeholder="Nome do jogador 2" />
-        <input type="text" id="player3" placeholder="Nome do jogador 3 (opcional)" />
-        <input type="text" id="player4" placeholder="Nome do jogador 4 (opcional)" />
-        <button onclick="startGame()">Começar Jogo</button>
-        <p id="error"></p>
-      </div>
+<div id="info">Pontos: 0 | Dinheiro: R$ 10.000</div>
+<div id="fase">Fase: 1</div>
+<canvas id="game" aria-label="Jogo Mario Contábil com controles touch, fases e efeitos"></canvas>
 
-      <h1 style="display:none;">Monopoly Contábil</h1>
-      <div id="tabuleiro" style="display:none;"></div>
-    </div>
+<div id="controls" aria-label="Controles de jogo para celular">
+  <button id="leftBtn" class="btn" aria-label="Mover para esquerda">◀️</button>
+  <button id="jumpBtn" class="btn" aria-label="Pular">⬆️</button>
+  <button id="rightBtn" class="btn" aria-label="Mover para direita">▶️</button>
+</div>
 
-    <aside id="ranking" style="display:none;">
-      <h2>Ranking</h2>
-      <div id="ranking-list"></div>
-    </aside>
-  </div>
+<script>
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
 
-  <div id="painel" style="display:none;">
-    <p id="status"></p>
-    <button onclick="jogar()">🎲 Jogar Dado</button>
-  </div>
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function playBeep(freq=440, duration=150){
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.type = 'square';
+    oscillator.frequency.value = freq;
+    oscillator.start();
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + duration / 1000);
+  }
+  function playJump() { playBeep(880, 100); }
+  function playCollect() { playBeep(660, 120); }
+  function playDamage() { playBeep(220, 300); }
 
-  <script>
-    let nomesJogadores = [];
-    let avatares = ["😀", "😎", "🤓", "🤑"];
-    let posicoes = [];
-    let dinheiro = [];
-    let jogadorAtual = 0;
+  function ajustarTamanhoCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight - document.getElementById('info').offsetHeight - document.getElementById('fase').offsetHeight;
+  }
+  ajustarTamanhoCanvas();
+  window.addEventListener('resize', ajustarTamanhoCanvas);
 
-    const casas = [
-      {nome: "Imposto de Renda", valor: -200, categoria:"imposto", icon:"💸"},
-      {nome: "Auditoria Fiscal", valor: -150, categoria:"auditoria", icon:"🕵️‍♂️"},
-      {nome: "Contabilidade de Custos", valor: 100, categoria:"custos", icon:"📊"},
-      {nome: "Balancete", valor: 50, categoria:"relatorio", icon:"📈"},
-      {nome: "Escrituração Fiscal", valor: -100, categoria:"imposto", icon:"🧾"},
-      {nome: "Conciliação Bancária", valor: 200, categoria:"custos", icon:"🏦"},
-      {nome: "Planejamento Tributário", valor: 150, categoria:"imposto", icon:"🗂️"},
-      {nome: "Análise de Balanços", valor: -50, categoria:"relatorio", icon:"🔍"},
-      {nome: "Folha de Pagamento", valor: -100, categoria:"custos", icon:"💰"},
-      {nome: "Controle Patrimonial", valor: 200, categoria:"custos", icon:"🏢"},
-      {nome: "Inventário", valor: -50, categoria:"auditoria", icon:"📦"},
-      {nome: "Auditoria Interna", valor: -150, categoria:"auditoria", icon:"🧐"},
-      {nome: "Relatório Gerencial", valor: 100, categoria:"relatorio", icon:"📑"},
-      {nome: "ICMS", valor: -200, categoria:"imposto", icon:"🏷️"},
-      {nome: "ISS", valor: -100, categoria:"imposto", icon:"🛎️"},
-      {nome: "PIS/COFINS", valor: -150, categoria:"imposto", icon:"📃"},
-      {nome: "Nota Fiscal Eletrônica", valor: 50, categoria:"custos", icon:"💻"},
-      {nome: "Análise de Demonstrativos", valor: 100, categoria:"relatorio", icon:"📋"},
-      {nome: "DRE", valor: 200, categoria:"relatorio", icon:"📊"},
-      {nome: "Balanço Patrimonial", valor: 300, categoria:"relatorio", icon:"🏛️"},
-      {nome: "IRPJ", valor: -200, categoria:"imposto", icon:"💵"},
-      {nome: "Lucro Real", valor: 150, categoria:"custos", icon:"📈"},
-      {nome: "Lucro Presumido", valor: 100, categoria:"custos", icon:"📉"},
-      {nome: "DCTF", valor: -150, categoria:"imposto", icon:"📂"},
-      {nome: "SPED Contábil", valor: -100, categoria:"auditoria", icon:"🖥️"},
-      {nome: "SPED Fiscal", valor: -200, categoria:"imposto", icon:"🖨️"},
-      {nome: "Simples Nacional", valor: 200, categoria:"custos", icon:"🧮"},
-      {nome: "Encerramento de Exercício", valor: 100, categoria:"relatorio", icon:"📆"},
-      {nome: "Ativo Imobilizado", valor: -150, categoria:"custos", icon:"🏗️"},
-      {nome: "Controle de Estoque", valor: 150, categoria:"custos", icon:"📦"},
-      {nome: "Auditoria Externa", valor: -200, categoria:"auditoria", icon:"🔎"},
-      {nome: "Custo de Produção", valor: 100, categoria:"custos", icon:"🏭"},
-      {nome: "Margem de Contribuição", valor: 200, categoria:"custos", icon:"💹"},
-      {nome: "Ponto de Equilíbrio", valor: 150, categoria:"custos", icon:"⚖️"},
-      {nome: "Provisões Contábeis", valor: -100, categoria:"auditoria", icon:"📜"},
-      {nome: "Obrigações Trabalhistas", valor: -150, categoria:"imposto", icon:"🧾"},
-      {nome: "Despesas Antecipadas", valor: 50, categoria:"custos", icon:"💳"},
-      {nome: "Receitas Diferidas", valor: 100, categoria:"relatorio", icon:"📄"},
-      {nome: "Ajustes Contábeis", valor: -50, categoria:"auditoria", icon:"🧾"},
-      {nome: "Compliance Contábil", valor: 300, categoria:"relatorio", icon:"✅"}
-    ];
+  const GRAVITY = 0.7;
+  let keys = {};
 
-    function gerarTabuleiro() {
-      const t = document.getElementById("tabuleiro");
-      t.innerHTML = "";
-      const layout = Array(121).fill("vazio");
-      let ordem = [];
-      for (let i = 0; i < 11; i++) ordem.push(i);
-      for (let i = 1; i < 10; i++) ordem.push(i*11+10);
-      for (let i = 10; i >= 0; i--) ordem.push(110+i);
-      for (let i = 9; i > 0; i--) ordem.push(i*11);
-      ordem.forEach((pos, idx) => layout[pos] = idx);
-      layout.forEach(cell => {
-        const div = document.createElement("div");
-        if (cell === "vazio") {
-          div.className = "vazio";
-        } else {
-          div.className = "casa " + casas[cell].categoria;
-          div.innerHTML = `<div class="icon" title="${casas[cell].nome}">${casas[cell].icon}</div>
-                           <div>${casas[cell].nome}</div>
-                           <div>${casas[cell].valor>0?'+':'-'}R$${Math.abs(casas[cell].valor)}</div>`;
-          posicoes.forEach((p, idx) => {
-            if (p === cell) {
-              div.innerHTML += `<div class='jogador'>${avatares[idx]}<br>${nomesJogadores[idx]}</div>`;
-            }
-          });
-        }
-        t.appendChild(div);
+  let pontos = 0;
+  let dinheiro = 10000;
+  let faseAtual = 0;
+
+  const player = {
+    x: 50,
+    y: 0,
+    width: 40,
+    height: 40,
+    dy: 0,
+    speed: 5,
+    onGround: false,
+    color: '#0f4c81',
+  };
+
+  const fases = [
+    {
+      plataformas: [
+        {x: 0, y: 260, width: 480, height: 40},
+        {x: 150, y: 180, width: 100, height: 15},
+        {x: 300, y: 120, width: 120, height: 15},
+      ],
+      inimigos: [
+        {x: 200, y: 230, width: 30, height: 30, dx: 2, color: '#b91c1c', nome: 'Boleto Vencido'}, 
+        {x: 350, y: 80, width: 30, height: 30, dx: -1.5, color: '#dc2626', nome: 'Fatura Cartão'},
+      ],
+      itens: [
+        {x: 170, y: 150, width: 20, height: 20, collected: false, color: '#f59e0b', nome: "Recibo de Pagamento", valor: 500},
+        {x: 370, y: 100, width: 20, height: 20, collected: false, color: '#10b981', nome: "Comprovante IR", valor: 700},
+      ],
+      floorHeight: 260,
+    },
+    {
+      plataformas: [
+        {x: 0, y: 260, width: 480, height: 40},
+        {x: 80, y: 190, width: 120, height: 15},
+        {x: 250, y: 140, width: 150, height: 15},
+        {x: 450, y: 90, width: 60, height: 15},
+      ],
+      inimigos: [
+        {x: 100, y: 160, width: 30, height: 30, dx: 1.5, color: '#b91c1c', nome: 'Conta de Luz Atrasada'},
+        {x: 300, y: 110, width: 30, height: 30, dx: -2, color: '#dc2626', nome: 'Multa IPTU'},
+        {x: 460, y: 50, width: 30, height: 30, dx: -1, color: '#991b1b', nome: 'Fatura Cartão'},
+      ],
+      itens: [
+        {x: 100, y: 160, width: 20, height: 20, collected: false, color: '#f59e0b', nome: "Declaração IR", valor: 800},
+        {x: 270, y: 110, width: 20, height: 20, collected: false, color: '#10b981', nome: "Comprovante INSS", valor: 600},
+        {x: 470, y: 60, width: 20, height: 20, collected: false, color: '#2563eb', nome: "Recibo Médico", valor: 400},
+      ],
+      floorHeight: 260,
+    },
+    {
+      plataformas: [
+        {x: 0, y: 300, width: 600, height: 40},
+        {x: 100, y: 220, width: 120, height: 15},
+        {x: 280, y: 170, width: 140, height: 15},
+        {x: 460, y: 120, width: 100, height: 15},
+        {x: 590, y: 70, width: 80, height: 15},
+      ],
+      inimigos: [
+        {x: 120, y: 190, width: 30, height: 30, dx: 2.5, color: '#b91c1c', nome: 'Boleto Cartão Crédito'}, 
+        {x: 320, y: 140, width: 30, height: 30, dx: -2, color: '#dc2626', nome: 'Multa IPVA'},
+        {x: 470, y: 90, width: 30, height: 30, dx: 1.8, color: '#991b1b', nome: 'Fatura Atrasada'},
+        {x: 600, y: 40, width: 30, height: 30, dx: -1.3, color: '#7f1d1d', nome: 'Conta de Água'},
+      ],
+      itens: [
+        {x: 110, y: 190, width: 20, height: 20, collected: false, color: '#f59e0b', nome: "Comprovante FGTS", valor: 700},
+        {x: 300, y: 140, width: 20, height: 20, collected: false, color: '#10b981', nome: "Declaração Médico", valor: 850},
+        {x: 480, y: 90, width: 20, height: 20, collected: false, color: '#2563eb', nome: "Recibo IRPF", valor: 600},
+        {x: 600, y: 60, width: 20, height: 20, collected: false, color: '#8b5cf6', nome: "Comprovante Despesa", valor: 550},
+      ],
+      floorHeight: 300,
+    }
+  ];
+
+  let plataformas = [];
+  let inimigos = [];
+  let itens = [];
+  let floorHeight;
+
+  // Partículas para efeito de coleta
+  let particulas = [];
+
+  function criarParticulas(x, y, cor) {
+    for(let i = 0; i < 15; i++) {
+      particulas.push({
+        x,
+        y,
+        dx: (Math.random() - 0.5) * 4,
+        dy: (Math.random() - 0.5) * 4,
+        radius: Math.random() * 3 + 1,
+        life: 30,
+        color: cor
       });
     }
+  }
 
-    function atualizarRanking() {
-      const rankDiv = document.getElementById("ranking-list");
-      rankDiv.innerHTML = "";
-      let ranking = nomesJogadores.map((nome, i) => ({
-        nome,
-        avatar: avatares[i],
-        dinheiro: dinheiro[i]
-      }));
-      ranking.sort((a,b) => b.dinheiro - a.dinheiro);
-      ranking.forEach((player, idx) => {
-        const div = document.createElement("div");
-        div.className = "player-rank";
-        div.innerHTML = `<div class="pos">${idx+1}</div>
-                         <div class="avatar" title="${player.nome}">${player.avatar}</div>
-                         <div class="info">
-                           <div class="name">${player.nome}</div>
-                           <div class="score">R$${player.dinheiro}</div>
-                         </div>`;
-        rankDiv.appendChild(div);
-      });
-    }
+  function initFase(num) {
+    const f = fases[num];
+    plataformas = f.plataformas.map(p => ({...p}));
+    inimigos = f.inimigos.map(e => ({...e}));
+    itens = f.itens.map(i => ({...i}));
+    floorHeight = f.floorHeight;
+    player.x = 50;
+    player.y = floorHeight - player.height;
+    player.dy = 0;
+    player.onGround = true;
+    pontos = 0;
+    atualizarInfo();
+    document.getElementById('fase').textContent = `Fase: ${num + 1}`;
+  }
 
-    function jogar() {
-      const dado = Math.floor(Math.random()*6)+1;
-      posicoes[jogadorAtual] = (posicoes[jogadorAtual] + dado) % 40;
-      dinheiro[jogadorAtual] += casas[posicoes[jogadorAtual]].valor;
-      document.getElementById("status").textContent = `${nomesJogadores[jogadorAtual]} (${avatares[jogadorAtual]}) tirou ${dado} - ${casas[posicoes[jogadorAtual]].nome} (${casas[posicoes[jogadorAtual]].valor>0?'+':'-'}R$${Math.abs(casas[posicoes[jogadorAtual]].valor)}) | Saldo: R$${dinheiro[jogadorAtual]}`;
-      jogadorAtual = (jogadorAtual + 1) % posicoes.length;
-      gerarTabuleiro();
-      atualizarRanking();
-    }
+  function colisao(a, b) {
+    return (
+      a.x < b.x + b.width &&
+      a.x + a.width > b.x &&
+      a.y < b.y + b.height &&
+      a.y + a.height > b.y
+    );
+  }
 
-    function startGame() {
-      const p1 = document.getElementById("player1").value.trim();
-      const p2 = document.getElementById("player2").value.trim();
-      const p3 = document.getElementById("player3").value.trim();
-      const p4 = document.getElementById("player4").value.trim();
-      const error = document.getElementById("error");
+  function update() {
+    // Movimento horizontal
+    if (keys['ArrowRight'] || keys['right']) player.x += player.speed;
+    if (keys['ArrowLeft'] || keys['left']) player.x -= player.speed;
 
-      let nomes = [p1, p2];
-      if (p3) nomes.push(p3);
-      if (p4) nomes.push(p4);
+    // Gravidade e pulo
+    player.dy += GRAVITY;
+    player.y += player.dy;
 
-      if (nomes.length < 2) {
-        error.textContent = "Digite ao menos 2 nomes para começar.";
-        return;
+    // Colisão com plataformas
+    player.onGround = false;
+    for(let plat of plataformas) {
+      if (
+        player.x + player.width > plat.x &&
+        player.x < plat.x + plat.width &&
+        player.y + player.height > plat.y &&
+        player.y + player.height < plat.y + plat.height + player.dy
+      ) {
+        player.y = plat.y - player.height;
+        player.dy = 0;
+        player.onGround = true;
       }
-      if (nomes.some(n => n.length < 1)) {
-        error.textContent = "Todos os nomes preenchidos devem ter ao menos 1 caractere.";
-        return;
-      }
-
-      nomesJogadores = nomes;
-      posicoes = new Array(nomesJogadores.length).fill(0);
-      dinheiro = new Array(nomesJogadores.length).fill(1500);
-      jogadorAtual = 0;
-      error.textContent = "";
-
-      document.getElementById("config").style.display = "none";
-      document.querySelector("h1").style.display = "block";
-      document.getElementById("tabuleiro").style.display = "grid";
-      document.getElementById("painel").style.display = "flex";
-      document.getElementById("ranking").style.display = "flex";
-
-      gerarTabuleiro();
-      atualizarRanking();
     }
-  </script>
+
+    // Limites da tela horizontal
+    if(player.x < 0) player.x = 0;
+    if(player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+
+    // Colisão com inimigos
+    for(let enemy of inimigos) {
+      enemy.x += enemy.dx;
+
+      if(enemy.x < 0 || enemy.x + enemy.width > canvas.width) enemy.dx *= -1;
+
+      if(colisao(player, enemy)) {
+        dinheiro -= 300;
+        pontos = Math.max(0, pontos - 100);
+        playDamage();
+        alert(`Você foi penalizado! ${enemy.nome} - Pague R$300 de multa.`);
+        player.x -= player.speed * 2;
+        atualizarInfo();
+      }
+    }
+
+    // Coletar itens
+    for(let item of itens) {
+      if(!item.collected && colisao(player, item)) {
+        item.collected = true;
+        dinheiro += item.valor;
+        pontos += 150;
+        playCollect();
+        criarParticulas(item.x + item.width/2, item.y + item.height/2, item.color);
+        atualizarInfo();
+      }
+    }
+
+    // Atualizar partículas
+    particulas = particulas.filter(p => p.life > 0);
+    for(let p of particulas) {
+      p.x += p.dx;
+      p.y += p.dy;
+      p.life--;
+      p.radius *= 0.95;
+    }
+
+    // Limite chão
+    if(player.y + player.height > floorHeight + 40) {
+      player.y = floorHeight - player.height;
+      player.dy = 0;
+      player.onGround = true;
+    }
+
+    // Verifica se terminou a fase (todos itens coletados)
+    if(itens.every(i => i.collected)) {
+      faseAtual++;
+      if(faseAtual >= fases.length) {
+        alert('Parabéns! Você terminou todas as fases!');
+        faseAtual = 0;
+        pontos = 0;
+        dinheiro = 10000;
+      } else {
+        alert(`Parabéns! Você passou para a fase ${faseAtual + 1}`);
+      }
+      initFase(faseAtual);
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Fundo
+    ctx.fillStyle = '#a3cef1';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // Plataformas
+    for(let plat of plataformas) {
+      ctx.fillStyle = '#2563eb';
+      ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+      ctx.fillStyle = '#dbeafe';
+      ctx.font = '14px Arial';
+      if (plat.y === floorHeight) {
+        ctx.fillText('Chão Contábil', plat.x + 10, plat.y + 25);
+      } else {
+        ctx.fillText('Plataforma', plat.x + 10, plat.y + 12);
+      }
+    }
+
+    // Jogador
+    ctx.fillStyle = player.color;
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+    ctx.fillStyle = '#fff';
+    ctx.font = '24px Arial';
+    ctx.fillText('👨‍💼', player.x + 5, player.y + 30);
+
+    // Inimigos
+    for(let enemy of inimigos) {
+      ctx.fillStyle = enemy.color;
+      ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+      ctx.fillStyle = '#fff';
+      ctx.font = '20px Arial';
+      ctx.fillText('📄', enemy.x + 5, enemy.y + 22);
+    }
+
+    // Itens
+    for(let item of itens) {
+      if(!item.collected) {
+        ctx.fillStyle = item.color;
+        ctx.fillRect(item.x, item.y, item.width, item.height);
+        ctx.fillStyle = '#000';
+        ctx.font = '16px Arial';
+        ctx.fillText('📑', item.x + 2, item.y + 16);
+      }
+    }
+
+    // Partículas
+    for(let p of particulas) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2);
+      ctx.fillStyle = p.color;
+      ctx.fill();
+    }
+  }
+
+  function atualizarInfo() {
+    document.getElementById('info').textContent = `Pontos: ${pontos} | Dinheiro: R$ ${dinheiro}`;
+  }
+
+  // Eventos teclado
+  window.addEventListener('keydown', (e) => {
+    keys[e.key] = true;
+    if((e.key === 'ArrowUp' || e.key === ' ') && player.onGround) {
+      player.dy = -14;
+      player.onGround = false;
+      playJump();
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    keys[e.key] = false;
+  });
+
+  // Eventos touch
+  document.getElementById('leftBtn').addEventListener('touchstart', e => { keys['left'] = true; e.preventDefault(); });
+  document.getElementById('leftBtn').addEventListener('touchend', e => { keys['left'] = false; e.preventDefault(); });
+
+  document.getElementById('rightBtn').addEventListener('touchstart', e => { keys['right'] = true; e.preventDefault(); });
+  document.getElementById('rightBtn').addEventListener('touchend', e => { keys['right'] = false; e.preventDefault(); });
+
+  document.getElementById('jumpBtn').addEventListener('touchstart', e => { 
+    if(player.onGround) {
+      player.dy = -14;
+      player.onGround = false;
+      playJump();
+    }
+    e.preventDefault(); 
+  });
+  document.getElementById('jumpBtn').addEventListener('touchend', e => { e.preventDefault(); });
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  initFase(faseAtual);
+  atualizarInfo();
+  loop();
+</script>
 </body>
 </html>
