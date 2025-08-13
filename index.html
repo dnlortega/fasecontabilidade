@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Mario Contábil - Sem Pop-up de Penalidade</title>
+<title>Mario Contábil - Controle por Toque</title>
 <style>
   html, body {
     margin: 0; padding: 0; height: 100%; overflow: hidden;
     background: #f0f4f8;
     font-family: 'Arial', sans-serif;
-    touch-action: none;
+    touch-action: manipulation;
     user-select: none;
   }
   #info {
@@ -62,49 +62,13 @@
     border: none;
     z-index: 10;
   }
-  /* Controles touch */
-  #controls {
-    position: fixed;
-    bottom: 15px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 280px;
-    display: flex;
-    justify-content: space-between;
-    z-index: 30;
-    user-select: none;
-  }
-  .btn {
-    background: #0f4c81cc;
-    color: white;
-    font-size: 28px;
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 10px #0f4c81aa;
-    touch-action: manipulation;
-    user-select: none;
-  }
-  .btn:active {
-    background: #0f4c81;
-    box-shadow: 0 2px 5px #0f4c81ff inset;
-  }
 </style>
 </head>
 <body>
 <div id="info">Pontos: 0 | Dinheiro: R$ 10.000</div>
 <div id="fase">Fase: 1</div>
 <div id="mensagem" role="alert" aria-live="assertive"></div>
-<canvas id="game" aria-label="Jogo Mario Contábil com controles touch, fases e efeitos"></canvas>
-
-<div id="controls" aria-label="Controles de jogo para celular">
-  <button id="leftBtn" class="btn" aria-label="Mover para esquerda">◀️</button>
-  <button id="jumpBtn" class="btn" aria-label="Pular">⬆️</button>
-  <button id="rightBtn" class="btn" aria-label="Mover para direita">▶️</button>
-</div>
+<canvas id="game" aria-label="Jogo Mario Contábil com controle por toque"></canvas>
 
 <script>
   const canvas = document.getElementById('game');
@@ -156,7 +120,7 @@
     width: 40,
     height: 40,
     dy: 0,
-    speed: 5,
+    speed: 3,  // velocidade fixa para andar para direita
     onGround: false,
     color: '#0f4c81',
   };
@@ -267,8 +231,8 @@
   }
 
   function update() {
-    if (keys['ArrowRight'] || keys['right']) player.x += player.speed;
-    if (keys['ArrowLeft'] || keys['left']) player.x -= player.speed;
+    // Andar sempre para frente
+    player.x += player.speed;
 
     player.dy += GRAVITY;
     player.y += player.dy;
@@ -296,7 +260,6 @@
       if(enemy.x < 0 || enemy.x + enemy.width > canvas.width) enemy.dx *= -1;
 
       if(colisao(player, enemy)) {
-        // Substitui alert por mensagem fixa
         dinheiro -= 300;
         pontos = Math.max(0, pontos - 100);
         playDamage();
@@ -399,23 +362,8 @@
     document.getElementById('info').textContent = `Pontos: ${pontos} | Dinheiro: R$ ${dinheiro}`;
   }
 
-  window.addEventListener('keydown', (e) => {
-    keys[e.key] = true;
-    if((e.key === 'ArrowUp' || e.key === ' ') && player.onGround) {
-      player.dy = -14;
-      player.onGround = false;
-      playJump();
-    }
-  });
-  window.addEventListener('keyup', (e) => {
-    keys[e.key] = false;
-  });
-
-  document.getElementById('leftBtn').addEventListener('touchstart', e => { keys['left'] = true; e.preventDefault(); });
-  document.getElementById('leftBtn').addEventListener('touchend', e => { keys['left'] = false; e.preventDefault(); });
-  document.getElementById('rightBtn').addEventListener('touchstart', e => { keys['right'] = true; e.preventDefault(); });
-  document.getElementById('rightBtn').addEventListener('touchend', e => { keys['right'] = false; e.preventDefault(); });
-  document.getElementById('jumpBtn').addEventListener('touchstart', e => {
+  // Controle por toque: só pular quando tocar na tela
+  window.addEventListener('touchstart', e => {
     if(player.onGround) {
       player.dy = -14;
       player.onGround = false;
