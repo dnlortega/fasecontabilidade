@@ -2,7 +2,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Mario-like Game</title>
+<title>Mario-like Game Fixed</title>
 <style>
   html, body {
     margin: 0;
@@ -47,57 +47,61 @@
   <div id="jumpBtn" class="btn">⤒</div>
 </div>
 <script>
-// Game settings
+// Ajuste de canvas
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-let scale = window.devicePixelRatio || 1;
-canvas.width = window.innerWidth * scale;
-canvas.height = window.innerHeight * scale;
-ctx.scale(scale, scale);// Asset loader (free-to-use placeholder sprites & sounds) const ASSETS = { player: 'https://opengameart.org/sites/default/files/mario_like_player.png', enemy: 'https://opengameart.org/sites/default/files/goomba_like_enemy.png', coin: 'https://opengameart.org/sites/default/files/coin_gold.png', music: 'https://opengameart.org/sites/default/files/SuperMarioBros.ogg' };
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;// Assets const ASSETS = { player: 'https://opengameart.org/sites/default/files/mario_like_player.png', enemy: 'https://opengameart.org/sites/default/files/goomba_like_enemy.png', coin: 'https://opengameart.org/sites/default/files/coin_gold.png' };
 
-const images = {}; function loadImages(sources, callback) { let loaded = 0, total = Object.keys(sources).length; for (let key in sources) { const img = new Image(); img.src = sources[key]; img.onload = () => { loaded++; if (loaded >= total) callback(); }; images[key] = img; } }
+const images = {}; function loadImages(sources, callback) { let loaded = 0, total = Object.keys(sources).length; for (let key in sources) { const img = new Image(); img.src = sources[key]; img.onload = () => { loaded++; if (loaded >= total) callback(); }; img.onerror = () => { console.warn(Erro ao carregar imagem: ${sources[key]}); loaded++; if (loaded >= total) callback(); }; images[key] = img; } }
 
-let audio = new Audio(ASSETS.music); audio.loop = true; audio.volume = 0.3;
+// Variáveis do jogo let player = {x:50, y:0, vx:0, vy:0, w:32, h:32, grounded:false, jumps:2, score:0, lives:3}; let keys = {left:false, right:false}; let level = 0; let levels = []; let cameraX = 0;
 
-// Game variables let player = {x:50, y:0, vx:0, vy:0, w:32, h:32, grounded:false, jumps:2, score:0, lives:3}; let keys = {left:false, right:false, jump:false}; let level = 0; let levels = [];
-
-function generateLevels() { for (let i = 0; i < 10; i++) { let platforms = [{x:0,y:window.innerHeight-50,w:500+i100,h:50}]; let enemies = [], coins = []; for (let p = 1; p <= i+2; p++) { platforms.push({x:200p,y:window.innerHeight-150-Math.random()100,w:100,h:20}); if (Math.random()<0.5) coins.push({x:200p+30,y:window.innerHeight-180-Math.random()100,w:20,h:20}); if (Math.random()<0.4) enemies.push({x:200p+50,y:window.innerHeight-182,w:32,h:32,vx:-1}); } levels.push({platforms,enemies,coins}); } }
+function generateLevels() { for (let i = 0; i < 10; i++) { let platforms = [{x:0,y:canvas.height-50,w:500+i100,h:50}]; let enemies = [], coins = []; for (let p = 1; p <= i+2; p++) { platforms.push({x:200p,y:canvas.height-150-Math.random()100,w:100,h:20}); if (Math.random()<0.5) coins.push({x:200p+30,y:canvas.height-180-Math.random()100,w:20,h:20}); if (Math.random()<0.4) enemies.push({x:200p+50,y:canvas.height-182,w:32,h:32,vx:-1}); } levels.push({platforms,enemies,coins}); } }
 
 generateLevels();
 
-function resetPlayer() { player.x = 50; player.y = 0; player.vx = 0; player.vy = 0; player.grounded = false; player.jumps = 2; }
+function resetPlayer() { player.x = 50; player.y = 0; player.vx = 0; player.vy = 0; player.grounded = false; player.jumps = 2; cameraX = 0; }
 
 function nextLevel() { level++; if (level >= levels.length) level = 0; resetPlayer(); }
 
-function update() { // Movement if (keys.left) player.vx = -3; else if (keys.right) player.vx = 3; else player.vx = 0; player.vy += 0.5; // gravity player.x += player.vx; player.y += player.vy;
+function jump() { if (player.jumps > 0) { player.vy = -10; player.jumps--; } }
 
-// Collisions let lvl = levels[level]; player.grounded = false; for (let plat of lvl.platforms) { if (player.x < plat.x+plat.w && player.x+player.w > plat.x && player.y < plat.y+plat.h && player.y+player.h > plat.y) { if (player.vy > 0) { player.y = plat.y - player.h; player.vy = 0; player.grounded = true; player.jumps = 2; } } }
+function update() { if (keys.left) player.vx = -3; else if (keys.right) player.vx = 3; else player.vx = 0; player.vy += 0.5; player.x += player.vx; player.y += player.vy;
 
-// Enemies for (let e of lvl.enemies) { e.x += e.vx; if (e.x < 0 || e.x > 2000) e.vx *= -1; if (player.x < e.x+e.w && player.x+player.w > e.x && player.y < e.y+e.h && player.y+player.h > e.y) { if (player.vy > 0) { e.dead = true; player.vy = -5; player.score += 100; } else { player.lives--; resetPlayer(); } } } lvl.enemies = lvl.enemies.filter(e=>!e.dead);
+let lvl = levels[level]; player.grounded = false; for (let plat of lvl.platforms) { if (player.x < plat.x+plat.w && player.x+player.w > plat.x && player.y < plat.y+plat.h && player.y+player.h > plat.y) { if (player.vy > 0) { player.y = plat.y - player.h; player.vy = 0; player.grounded = true; player.jumps = 2; } } }
 
-// Coins for (let c of lvl.coins) { if (player.x < c.x+c.w && player.x+player.w > c.x && player.y < c.y+c.h && player.y+player.h > c.y) { c.collected = true; player.score += 10; } } lvl.coins = lvl.coins.filter(c=>!c.collected);
+for (let e of lvl.enemies) { e.x += e.vx; if (e.x < 0 || e.x > 2000) e.vx *= -1; if (player.x < e.x+e.w && player.x+player.w > e.x && player.y < e.y+e.h && player.y+player.h > e.y) { if (player.vy > 0) { e.dead = true; player.vy = -5; player.score += 100; } else { player.lives--; resetPlayer(); } } } lvl.enemies = lvl.enemies.filter(e=>!e.dead);
 
-// Level complete if (player.x > lvl.platforms[lvl.platforms.length-1].x + 200) { nextLevel(); } }
+for (let c of lvl.coins) { if (player.x < c.x+c.w && player.x+player.w > c.x && player.y < c.y+c.h && player.y+player.h > c.y) { c.collected = true; player.score += 10; } } lvl.coins = lvl.coins.filter(c=>!c.collected);
 
-function draw() { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#5c94fc'; ctx.fillRect(0,0,window.innerWidth,window.innerHeight);
+if (player.x > lvl.platforms[lvl.platforms.length-1].x + 200) { nextLevel(); }
 
-let lvl = levels[level]; ctx.fillStyle = '#654321'; for (let plat of lvl.platforms) ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+cameraX = player.x - canvas.width/2 + player.w/2; }
 
-for (let c of lvl.coins) ctx.drawImage(images.coin, c.x, c.y, c.w, c.h); for (let e of lvl.enemies) ctx.drawImage(images.enemy, e.x, e.y, e.w, e.h);
+function draw() { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#5c94fc'; ctx.fillRect(0,0,canvas.width,canvas.height);
 
-ctx.drawImage(images.player, player.x, player.y, player.w, player.h);
+let lvl = levels[level]; ctx.save(); ctx.translate(-cameraX, 0);
+
+ctx.fillStyle = '#654321'; for (let plat of lvl.platforms) ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+
+for (let c of lvl.coins) { if (images.coin.complete) ctx.drawImage(images.coin, c.x, c.y, c.w, c.h); else ctx.fillStyle = 'yellow', ctx.fillRect(c.x,c.y,c.w,c.h); }
+
+for (let e of lvl.enemies) { if (images.enemy.complete) ctx.drawImage(images.enemy, e.x, e.y, e.w, e.h); else ctx.fillStyle = 'brown', ctx.fillRect(e.x,e.y,e.w,e.h); }
+
+if (images.player.complete) ctx.drawImage(images.player, player.x, player.y, player.w, player.h); else ctx.fillStyle = 'red', ctx.fillRect(player.x,player.y,player.w,player.h);
+
+ctx.restore();
 
 ctx.fillStyle = '#fff'; ctx.font = '20px sans-serif'; ctx.fillText('Score: '+player.score, 10, 20); ctx.fillText('Lives: '+player.lives, 10, 40); ctx.fillText('Level: '+(level+1), 10, 60); }
 
 function loop() { update(); draw(); requestAnimationFrame(loop); }
 
-// Controls window.addEventListener('keydown', e => { if (e.key === 'ArrowLeft') keys.left = true; if (e.key === 'ArrowRight') keys.right = true; if (e.key === ' ' || e.key === 'ArrowUp') jump(); }); window.addEventListener('keyup', e => { if (e.key === 'ArrowLeft') keys.left = false; if (e.key === 'ArrowRight') keys.right = false; });
-
-function jump() { if (player.jumps > 0) { player.vy = -10; player.jumps--; } }
+window.addEventListener('keydown', e => { if (e.key === 'ArrowLeft') keys.left = true; if (e.key === 'ArrowRight') keys.right = true; if (e.key === ' ' || e.key === 'ArrowUp') jump(); }); window.addEventListener('keyup', e => { if (e.key === 'ArrowLeft') keys.left = false; if (e.key === 'ArrowRight') keys.right = false; });
 
 document.getElementById('leftBtn').addEventListener('touchstart', ()=> keys.left = true); document.getElementById('leftBtn').addEventListener('touchend', ()=> keys.left = false); document.getElementById('rightBtn').addEventListener('touchstart', ()=> keys.right = true); document.getElementById('rightBtn').addEventListener('touchend', ()=> keys.right = false); document.getElementById('jumpBtn').addEventListener('touchstart', ()=> jump());
 
-// Load and start audio.play().catch(()=>{}); loadImages({player:ASSETS.player, enemy:ASSETS.enemy, coin:ASSETS.coin}, ()=>{ loop(); }); </script>
+loadImages(ASSETS, ()=>{ resetPlayer(); loop(); }); </script>
 
 </body>
 </html>
