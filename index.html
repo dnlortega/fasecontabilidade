@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Mario Contábil - Pessoa Física com Touch, Fases e Efeitos</title>
+<title>Mario Contábil - Sem Pop-up de Penalidade</title>
 <style>
   html, body {
     margin: 0; padding: 0; height: 100%; overflow: hidden;
@@ -32,13 +32,32 @@
     user-select: none;
     z-index: 20;
   }
+  #mensagem {
+    position: fixed;
+    top: 84px; /* logo abaixo do #fase */
+    left: 50%;
+    transform: translateX(-50%);
+    background: #f87171cc;
+    color: white;
+    font-weight: 700;
+    padding: 8px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(248,113,113,0.7);
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    z-index: 25;
+    pointer-events: none;
+    user-select: none;
+    max-width: 90vw;
+    text-align: center;
+  }
   canvas {
     display: block;
     position: fixed;
-    top: 72px; /* altura do #info + #fase */
+    top: 96px; /* altura do #info + #fase + #mensagem */
     left: 0;
     width: 100vw;
-    height: calc(100vh - 72px);
+    height: calc(100vh - 96px);
     background: linear-gradient(to top, #a3cef1 0%, #f0f4f8 100%);
     border: none;
     z-index: 10;
@@ -78,6 +97,7 @@
 <body>
 <div id="info">Pontos: 0 | Dinheiro: R$ 10.000</div>
 <div id="fase">Fase: 1</div>
+<div id="mensagem" role="alert" aria-live="assertive"></div>
 <canvas id="game" aria-label="Jogo Mario Contábil com controles touch, fases e efeitos"></canvas>
 
 <div id="controls" aria-label="Controles de jogo para celular">
@@ -89,6 +109,7 @@
 <script>
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
+  const mensagemEl = document.getElementById('mensagem');
 
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   function playBeep(freq=440, duration=150){
@@ -106,9 +127,18 @@
   function playCollect() { playBeep(660, 120); }
   function playDamage() { playBeep(220, 300); }
 
+  function mostrarMensagem(msg) {
+    mensagemEl.textContent = msg;
+    mensagemEl.style.opacity = '1';
+    clearTimeout(mensagemEl._timeout);
+    mensagemEl._timeout = setTimeout(() => {
+      mensagemEl.style.opacity = '0';
+    }, 4000);
+  }
+
   function ajustarTamanhoCanvas() {
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight - document.getElementById('info').offsetHeight - document.getElementById('fase').offsetHeight;
+    canvas.height = window.innerHeight - document.getElementById('info').offsetHeight - document.getElementById('fase').offsetHeight - mensagemEl.offsetHeight;
   }
   ajustarTamanhoCanvas();
   window.addEventListener('resize', ajustarTamanhoCanvas);
@@ -196,7 +226,6 @@
   let itens = [];
   let floorHeight;
 
-  // Partículas para efeito de coleta
   let particulas = [];
 
   function criarParticulas(x, y, cor) {
@@ -238,15 +267,12 @@
   }
 
   function update() {
-    // Movimento horizontal
     if (keys['ArrowRight'] || keys['right']) player.x += player.speed;
     if (keys['ArrowLeft'] || keys['left']) player.x -= player.speed;
 
-    // Gravidade e pulo
     player.dy += GRAVITY;
     player.y += player.dy;
 
-    // Colisão com plataformas
     player.onGround = false;
     for(let plat of plataformas) {
       if (
@@ -261,27 +287,25 @@
       }
     }
 
-    // Limites da tela horizontal
     if(player.x < 0) player.x = 0;
     if(player.x + player.width > canvas.width) player.x = canvas.width - player.width;
 
-    // Colisão com inimigos
     for(let enemy of inimigos) {
       enemy.x += enemy.dx;
 
       if(enemy.x < 0 || enemy.x + enemy.width > canvas.width) enemy.dx *= -1;
 
       if(colisao(player, enemy)) {
+        // Substitui alert por mensagem fixa
         dinheiro -= 300;
         pontos = Math.max(0, pontos - 100);
         playDamage();
-        alert(`Você foi penalizado! ${enemy.nome} - Pague R$300 de multa.`);
+        mostrarMensagem(`Você foi penalizado! ${enemy.nome} - Pague R$300 de multa.`);
         player.x -= player.speed * 2;
         atualizarInfo();
       }
     }
 
-    // Coletar itens
     for(let item of itens) {
       if(!item.collected && colisao(player, item)) {
         item.collected = true;
@@ -293,7 +317,6 @@
       }
     }
 
-    // Atualizar partículas
     particulas = particulas.filter(p => p.life > 0);
     for(let p of particulas) {
       p.x += p.dx;
@@ -302,14 +325,12 @@
       p.radius *= 0.95;
     }
 
-    // Limite chão
     if(player.y + player.height > floorHeight + 40) {
       player.y = floorHeight - player.height;
       player.dy = 0;
       player.onGround = true;
     }
 
-    // Verifica se terminou a fase (todos itens coletados)
     if(itens.every(i => i.collected)) {
       faseAtual++;
       if(faseAtual >= fases.length) {
@@ -327,11 +348,9 @@
   function draw() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // Fundo
     ctx.fillStyle = '#a3cef1';
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    // Plataformas
     for(let plat of plataformas) {
       ctx.fillStyle = '#2563eb';
       ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
@@ -344,14 +363,12 @@
       }
     }
 
-    // Jogador
     ctx.fillStyle = player.color;
     ctx.fillRect(player.x, player.y, player.width, player.height);
     ctx.fillStyle = '#fff';
     ctx.font = '24px Arial';
     ctx.fillText('👨‍💼', player.x + 5, player.y + 30);
 
-    // Inimigos
     for(let enemy of inimigos) {
       ctx.fillStyle = enemy.color;
       ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
@@ -360,7 +377,6 @@
       ctx.fillText('📄', enemy.x + 5, enemy.y + 22);
     }
 
-    // Itens
     for(let item of itens) {
       if(!item.collected) {
         ctx.fillStyle = item.color;
@@ -371,7 +387,6 @@
       }
     }
 
-    // Partículas
     for(let p of particulas) {
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2);
@@ -384,7 +399,6 @@
     document.getElementById('info').textContent = `Pontos: ${pontos} | Dinheiro: R$ ${dinheiro}`;
   }
 
-  // Eventos teclado
   window.addEventListener('keydown', (e) => {
     keys[e.key] = true;
     if((e.key === 'ArrowUp' || e.key === ' ') && player.onGround) {
@@ -397,31 +411,25 @@
     keys[e.key] = false;
   });
 
-  // Eventos touch
   document.getElementById('leftBtn').addEventListener('touchstart', e => { keys['left'] = true; e.preventDefault(); });
   document.getElementById('leftBtn').addEventListener('touchend', e => { keys['left'] = false; e.preventDefault(); });
-
   document.getElementById('rightBtn').addEventListener('touchstart', e => { keys['right'] = true; e.preventDefault(); });
   document.getElementById('rightBtn').addEventListener('touchend', e => { keys['right'] = false; e.preventDefault(); });
-
-  document.getElementById('jumpBtn').addEventListener('touchstart', e => { 
+  document.getElementById('jumpBtn').addEventListener('touchstart', e => {
     if(player.onGround) {
       player.dy = -14;
       player.onGround = false;
       playJump();
     }
-    e.preventDefault(); 
+    e.preventDefault();
   });
-  document.getElementById('jumpBtn').addEventListener('touchend', e => { e.preventDefault(); });
 
+  initFase(faseAtual);
   function loop() {
     update();
     draw();
     requestAnimationFrame(loop);
   }
-
-  initFase(faseAtual);
-  atualizarInfo();
   loop();
 </script>
 </body>
