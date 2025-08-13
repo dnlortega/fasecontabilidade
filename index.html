@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Mario Contábil - Controle por Toque Dividido</title>
+<title>Mario Contábil - Plataforma com Imagens e Som</title>
 <style>
   html, body {
     margin: 0; padding: 0; height: 100%; overflow: hidden;
-    background: #f0f4f8;
+    background: #5c94fc; /* Céu azul Mario */
     font-family: 'Arial', sans-serif;
     touch-action: manipulation;
     user-select: none;
@@ -58,7 +58,7 @@
     left: 0;
     width: 100vw;
     height: calc(100vh - 96px);
-    background: linear-gradient(to top, #a3cef1 0%, #f0f4f8 100%);
+    background: transparent;
     border: none;
     z-index: 10;
   }
@@ -75,21 +75,21 @@
   const ctx = canvas.getContext('2d');
   const mensagemEl = document.getElementById('mensagem');
 
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  function playBeep(freq=440, duration=150){
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-    oscillator.type = 'square';
-    oscillator.frequency.value = freq;
-    oscillator.start();
-    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    oscillator.stop(audioCtx.currentTime + duration / 1000);
+  // Imagens das plataformas estilo Mario (uso imagens públicas simples)
+  const plataformaImg = new Image();
+  plataformaImg.src = 'https://i.imgur.com/5v7Ra5m.png'; // bloco mario 32x32 (pode trocar se quiser)
+
+  // Fundo (tile) de grama para chão (criamos repetição)
+  const gramaImg = new Image();
+  gramaImg.src = 'https://i.imgur.com/WZ0psQK.png'; // grama 32x32 repetível
+
+  // Som do pulo Mario
+  const jumpAudio = new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg');
+
+  function playJump() {
+    jumpAudio.currentTime = 0;
+    jumpAudio.play();
   }
-  function playJump() { playBeep(880, 100); }
-  function playCollect() { playBeep(660, 120); }
-  function playDamage() { playBeep(220, 300); }
 
   function mostrarMensagem(msg) {
     mensagemEl.textContent = msg;
@@ -116,8 +116,8 @@
   const player = {
     x: 50,
     y: 0,
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     dy: 0,
     speed: 3,
     direction: 0,  // -1 para esquerda, 1 para direita, 0 parado
@@ -128,9 +128,9 @@
   const fases = [
     {
       plataformas: [
-        {x: 0, y: 260, width: 480, height: 40},
-        {x: 150, y: 180, width: 100, height: 15},
-        {x: 300, y: 120, width: 120, height: 15},
+        {x: 0, y: 260, width: 480, height: 32},
+        {x: 150, y: 180, width: 100, height: 32},
+        {x: 300, y: 120, width: 120, height: 32},
       ],
       inimigos: [
         {x: 200, y: 230, width: 30, height: 30, dx: 2, color: '#b91c1c', nome: 'Boleto Vencido'}, 
@@ -141,47 +141,6 @@
         {x: 370, y: 100, width: 20, height: 20, collected: false, color: '#10b981', nome: "Comprovante IR", valor: 700},
       ],
       floorHeight: 260,
-    },
-    {
-      plataformas: [
-        {x: 0, y: 260, width: 480, height: 40},
-        {x: 80, y: 190, width: 120, height: 15},
-        {x: 250, y: 140, width: 150, height: 15},
-        {x: 450, y: 90, width: 60, height: 15},
-      ],
-      inimigos: [
-        {x: 100, y: 160, width: 30, height: 30, dx: 1.5, color: '#b91c1c', nome: 'Conta de Luz Atrasada'},
-        {x: 300, y: 110, width: 30, height: 30, dx: -2, color: '#dc2626', nome: 'Multa IPTU'},
-        {x: 460, y: 50, width: 30, height: 30, dx: -1, color: '#991b1b', nome: 'Fatura Cartão'},
-      ],
-      itens: [
-        {x: 100, y: 160, width: 20, height: 20, collected: false, color: '#f59e0b', nome: "Declaração IR", valor: 800},
-        {x: 270, y: 110, width: 20, height: 20, collected: false, color: '#10b981', nome: "Comprovante INSS", valor: 600},
-        {x: 470, y: 60, width: 20, height: 20, collected: false, color: '#2563eb', nome: "Recibo Médico", valor: 400},
-      ],
-      floorHeight: 260,
-    },
-    {
-      plataformas: [
-        {x: 0, y: 300, width: 600, height: 40},
-        {x: 100, y: 220, width: 120, height: 15},
-        {x: 280, y: 170, width: 140, height: 15},
-        {x: 460, y: 120, width: 100, height: 15},
-        {x: 590, y: 70, width: 80, height: 15},
-      ],
-      inimigos: [
-        {x: 120, y: 190, width: 30, height: 30, dx: 2.5, color: '#b91c1c', nome: 'Boleto Cartão Crédito'}, 
-        {x: 320, y: 140, width: 30, height: 30, dx: -2, color: '#dc2626', nome: 'Multa IPVA'},
-        {x: 470, y: 90, width: 30, height: 30, dx: 1.8, color: '#991b1b', nome: 'Fatura Atrasada'},
-        {x: 600, y: 40, width: 30, height: 30, dx: -1.3, color: '#7f1d1d', nome: 'Conta de Água'},
-      ],
-      itens: [
-        {x: 110, y: 190, width: 20, height: 20, collected: false, color: '#f59e0b', nome: "Comprovante FGTS", valor: 700},
-        {x: 300, y: 140, width: 20, height: 20, collected: false, color: '#10b981', nome: "Declaração Médico", valor: 850},
-        {x: 480, y: 90, width: 20, height: 20, collected: false, color: '#2563eb', nome: "Recibo IRPF", valor: 600},
-        {x: 600, y: 60, width: 20, height: 20, collected: false, color: '#8b5cf6', nome: "Comprovante Despesa", valor: 550},
-      ],
-      floorHeight: 300,
     }
   ];
 
@@ -263,7 +222,6 @@
       if(colisao(player, enemy)) {
         dinheiro -= 300;
         pontos = Math.max(0, pontos - 100);
-        playDamage();
         mostrarMensagem(`Você foi penalizado! ${enemy.nome} - Pague R$300 de multa.`);
         player.x -= player.speed * player.direction * 3;
         atualizarInfo();
@@ -275,7 +233,6 @@
         item.collected = true;
         dinheiro += item.valor;
         pontos += 150;
-        playCollect();
         criarParticulas(item.x + item.width/2, item.y + item.height/2, item.color);
         atualizarInfo();
       }
@@ -289,22 +246,14 @@
       p.radius *= 0.95;
     }
 
-    if(player.y + player.height > floorHeight + 40) {
+    if(player.y + player.height > floorHeight + 32) {
       player.y = floorHeight - player.height;
       player.dy = 0;
       player.onGround = true;
     }
 
     if(itens.every(i => i.collected)) {
-      faseAtual++;
-      if(faseAtual >= fases.length) {
-        alert('Parabéns! Você terminou todas as fases!');
-        faseAtual = 0;
-        pontos = 0;
-        dinheiro = 10000;
-      } else {
-        alert(`Parabéns! Você passou para a fase ${faseAtual + 1}`);
-      }
+      alert('Parabéns! Você terminou a fase!');
       initFase(faseAtual);
     }
   }
@@ -312,51 +261,64 @@
   function draw() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    ctx.fillStyle = '#a3cef1';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-
-    for(let plat of plataformas) {
-      ctx.fillStyle = '#2563eb';
-      ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
-      ctx.fillStyle = '#dbeafe';
-      ctx.font = '14px Arial';
-      if (plat.y === floorHeight) {
-        ctx.fillText('Chão Contábil', plat.x + 10, plat.y + 25);
-      } else {
-        ctx.fillText('Plataforma', plat.x + 10, plat.y + 12);
+    // Desenha o fundo - repetindo a grama
+    if (gramaImg.complete) {
+      const tileSize = 32;
+      for(let x = 0; x < canvas.width; x += tileSize) {
+        for(let y = floorHeight; y < canvas.height; y += tileSize) {
+          ctx.drawImage(gramaImg, x, y, tileSize, tileSize);
+        }
       }
+    } else {
+      ctx.fillStyle = '#0a7f00';
+      ctx.fillRect(0, floorHeight, canvas.width, canvas.height - floorHeight);
     }
 
+    // Desenha plataformas com imagem
+    if(plataformaImg.complete) {
+      plataformas.forEach(plat => {
+        for(let x = plat.x; x < plat.x + plat.width; x += 32) {
+          ctx.drawImage(plataformaImg, x, plat.y, 32, 32);
+        }
+      });
+    } else {
+      ctx.fillStyle = '#2563eb';
+      plataformas.forEach(plat => {
+        ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+      });
+    }
+
+    // Desenha player com emoji Mario Contábil
     ctx.fillStyle = player.color;
     ctx.fillRect(player.x, player.y, player.width, player.height);
-    ctx.fillStyle = '#fff';
     ctx.font = '24px Arial';
-    ctx.fillText('👨‍💼', player.x + 5, player.y + 30);
+    ctx.fillText('👨‍💼', player.x + 5, player.y + 26);
 
-    for(let enemy of inimigos) {
+    // Desenha inimigos como boletos (documento emoji)
+    inimigos.forEach(enemy => {
       ctx.fillStyle = enemy.color;
       ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-      ctx.fillStyle = '#fff';
       ctx.font = '20px Arial';
       ctx.fillText('📄', enemy.x + 5, enemy.y + 22);
-    }
+    });
 
-    for(let item of itens) {
+    // Desenha itens (recibos etc) como emoji 📑
+    itens.forEach(item => {
       if(!item.collected) {
         ctx.fillStyle = item.color;
         ctx.fillRect(item.x, item.y, item.width, item.height);
-        ctx.fillStyle = '#000';
         ctx.font = '16px Arial';
         ctx.fillText('📑', item.x + 2, item.y + 16);
       }
-    }
+    });
 
-    for(let p of particulas) {
+    // Partículas
+    particulas.forEach(p => {
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2);
       ctx.fillStyle = p.color;
       ctx.fill();
-    }
+    });
   }
 
   function atualizarInfo() {
