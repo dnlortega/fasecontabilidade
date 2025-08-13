@@ -1,454 +1,103 @@
-<!DOCTYPE html><html lang="pt-br">
+<!DOCTYPE html><html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Replica estilo Mario — HTML5 Canvas</title>
-  <style>
-    :root {
-      --bg: #87CEEB; /* céu */
-      --ground: #7c4a16;
-      --grass: #3aa655;
-      --ui: rgba(0,0,0,.6);
-      --uiText: #fff;
-    }
-    html, body {
-      margin: 0; height: 100%; background: #000; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-    }
-    #wrap { position: fixed; inset: 0; display: grid; place-items: center; }
-    canvas { width: 100vw; height: 100vh; image-rendering: pixelated; image-rendering: crisp-edges; display: block; }/* HUD */
-.hud { position: fixed; top: .75rem; left: .75rem; right: .75rem; display: flex; justify-content: space-between; gap: .5rem; pointer-events: none; }
-.chip { background: var(--ui); color: var(--uiText); padding: .35rem .6rem; border-radius: 14px; font-size: .9rem; }
-
-/* Controles toque (mobile) */
-.touch { position: fixed; bottom: .75rem; left: .75rem; right: .75rem; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem; }
-.btn { background: var(--ui); color: var(--uiText); border: 1px solid rgba(255,255,255,.15); border-radius: 16px; padding: 1.1rem; text-align: center; user-select: none; -webkit-user-select:none; touch-action: manipulation; }
-.btn:active { background: rgba(255,255,255,.22); }
-.vis { position: fixed; bottom: 5.5rem; right: .75rem; background: var(--ui); color: var(--uiText); padding: .35rem .6rem; border-radius: 14px; font-size: .85rem; }
-
-@media (min-width: 920px) {
-  .touch { max-width: 520px; left: 50%; transform: translateX(-50%); }
-}
-
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Mario-like Game</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #5c94fc;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    background: #5c94fc;
+    touch-action: none;
+  }
+  #controls {
+    position: fixed;
+    bottom: 10px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .btn {
+    width: 80px;
+    height: 80px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 50%;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    user-select: none;
+  }
+</style>
 </head>
 <body>
-  <div id="wrap">
-    <canvas id="game" width="480" height="270" aria-label="jogo estilo Mario"></canvas>
+<canvas id="gameCanvas"></canvas>
+<div id="controls">
+  <div>
+    <div id="leftBtn" class="btn">◀</div>
+    <div id="rightBtn" class="btn">▶</div>
   </div>
-  <div class="hud">
-    <div class="chip" id="hudLevel">Fase 1-1</div>
-    <div class="chip" id="hudCoins">Moedas: 0</div>
-    <div class="chip" id="hudLives">Vidas: 3</div>
-  </div>
-  <div class="touch" id="touch">
-    <div class="btn" data-btn="left">⟵</div>
-    <div class="btn" data-btn="jump">⟰ Pular</div>
-    <div class="btn" data-btn="right">⟶</div>
-  </div>
-  <div class="vis" id="msg" style="display:none;"></div>  <script>
-/**
- * Replica estilo Mario — protótipo educacional
- * — Fases, moedas, inimigos simples, colisão, física, HUD
- * — Teclado e toque (mobile), pulo duplo, responsivo
- *
- * IMPORTANTE (direitos autorais):
- * Este arquivo NÃO inclui sprites/som oficiais de Mario.
- * Para usar artes/sons, aponte as URLs no objeto ASSETS abaixo
- * para arquivos que você mesmo possui licença ou que sejam livres.
- */
+  <div id="jumpBtn" class="btn">⤒</div>
+</div>
+<script>
+// Game settings
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let scale = window.devicePixelRatio || 1;
+canvas.width = window.innerWidth * scale;
+canvas.height = window.innerHeight * scale;
+ctx.scale(scale, scale);// Asset loader (free-to-use placeholder sprites & sounds) const ASSETS = { player: 'https://opengameart.org/sites/default/files/mario_like_player.png', enemy: 'https://opengameart.org/sites/default/files/goomba_like_enemy.png', coin: 'https://opengameart.org/sites/default/files/coin_gold.png', music: 'https://opengameart.org/sites/default/files/SuperMarioBros.ogg' };
 
-// === CONFIG ASSETS ==========================================================
-const ASSETS = {
-  // Coloque aqui URLs suas (licenciadas ou livres). Ex.:
-  // player: 'assets/player.png',
-  // tiles: 'assets/tiles.png',
-  // goomba: 'assets/goomba.png',
-  // coin: 'assets/coin.png',
-  // s_jump: 'assets/jump.wav',
-  // s_coin: 'assets/coin.wav',
-  // s_stomp: 'assets/stomp.wav',
-};
+const images = {}; function loadImages(sources, callback) { let loaded = 0, total = Object.keys(sources).length; for (let key in sources) { const img = new Image(); img.src = sources[key]; img.onload = () => { loaded++; if (loaded >= total) callback(); }; images[key] = img; } }
 
-// === MOTOR BÁSICO ===========================================================
-const TAU = Math.PI * 2;
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const lerp = (a,b,t) => a+(b-a)*t;
+let audio = new Audio(ASSETS.music); audio.loop = true; audio.volume = 0.3;
 
-const input = { left:false, right:false, jump:false, justJump:false };
-let canDoubleJump = true; // controle de pulo duplo
+// Game variables let player = {x:50, y:0, vx:0, vy:0, w:32, h:32, grounded:false, jumps:2, score:0, lives:3}; let keys = {left:false, right:false, jump:false}; let level = 0; let levels = [];
 
-// Teclado
-addEventListener('keydown', e=>{
-  if (e.repeat) return;
-  if (e.code==='ArrowLeft' || e.code==='KeyA') input.left = true;
-  if (e.code==='ArrowRight' || e.code==='KeyD') input.right = true;
-  if (e.code==='ArrowUp' || e.code==='Space' || e.code==='KeyW') { input.jump = true; input.justJump = true; }
-});
-addEventListener('keyup', e=>{
-  if (e.code==='ArrowLeft' || e.code==='KeyA') input.left = false;
-  if (e.code==='ArrowRight' || e.code==='KeyD') input.right = false;
-  if (e.code==='ArrowUp' || e.code==='Space' || e.code==='KeyW') input.jump = false;
-});
+function generateLevels() { for (let i = 0; i < 10; i++) { let platforms = [{x:0,y:window.innerHeight-50,w:500+i100,h:50}]; let enemies = [], coins = []; for (let p = 1; p <= i+2; p++) { platforms.push({x:200p,y:window.innerHeight-150-Math.random()100,w:100,h:20}); if (Math.random()<0.5) coins.push({x:200p+30,y:window.innerHeight-180-Math.random()100,w:20,h:20}); if (Math.random()<0.4) enemies.push({x:200p+50,y:window.innerHeight-182,w:32,h:32,vx:-1}); } levels.push({platforms,enemies,coins}); } }
 
-// Toque (mobile)
-const touchWrap = document.getElementById('touch');
-const stateTouch = { left:false, right:false, jump:false };
-const setTouch = (k,v)=>{ stateTouch[k]=v; syncTouch(); };
-function syncTouch(){
-  input.left = stateTouch.left;
-  input.right = stateTouch.right;
-  if (stateTouch.jump && !input.jump) { input.justJump = true; }
-  input.jump = stateTouch.jump;
-}
-['left','right','jump'].forEach(name=>{
-  const el = [...touchWrap.querySelectorAll('[data-btn]')].find(b=>b.dataset.btn===name);
-  const on = ()=>setTouch(name,true);
-  const off = ()=>setTouch(name,false);
-  el.addEventListener('touchstart', (e)=>{ e.preventDefault(); on(); }, {passive:false});
-  el.addEventListener('touchend', off);
-  el.addEventListener('mousedown', on);
-  el.addEventListener('mouseup', off);
-  el.addEventListener('mouseleave', off);
-});
+generateLevels();
 
-// Canvas
-const cvs = document.getElementById('game');
-const ctx = cvs.getContext('2d');
+function resetPlayer() { player.x = 50; player.y = 0; player.vx = 0; player.vy = 0; player.grounded = false; player.jumps = 2; }
 
-// Redimensiona mantendo aspecto
-function fitCanvas(){
-  const W = innerWidth, H = innerHeight;
-  const arGame = cvs.width / cvs.height;
-  let w = W, h = W/arGame;
-  if (h>H) { h=H; w=h*arGame; }
-  cvs.style.width = w+'px';
-  cvs.style.height = h+'px';
-}
-addEventListener('resize', fitCanvas);
-fitCanvas();
+function nextLevel() { level++; if (level >= levels.length) level = 0; resetPlayer(); }
 
-// Câmera
-const camera = { x:0, y:0 };
+function update() { // Movement if (keys.left) player.vx = -3; else if (keys.right) player.vx = 3; else player.vx = 0; player.vy += 0.5; // gravity player.x += player.vx; player.y += player.vy;
 
-// Mundo / física
-const GRAV = 0.55; // gravidade
-const FRICTION = 0.85;
-const MOVE = 0.6;
-const JUMP_V = 11.5; // força do pulo
-const MAX_VX = 5.0;
-const MAX_VY = 18.0;
+// Collisions let lvl = levels[level]; player.grounded = false; for (let plat of lvl.platforms) { if (player.x < plat.x+plat.w && player.x+player.w > plat.x && player.y < plat.y+plat.h && player.y+player.h > plat.y) { if (player.vy > 0) { player.y = plat.y - player.h; player.vy = 0; player.grounded = true; player.jumps = 2; } } }
 
-// Tiles
-const TILE = 24; // tamanho base
+// Enemies for (let e of lvl.enemies) { e.x += e.vx; if (e.x < 0 || e.x > 2000) e.vx *= -1; if (player.x < e.x+e.w && player.x+player.w > e.x && player.y < e.y+e.h && player.y+player.h > e.y) { if (player.vy > 0) { e.dead = true; player.vy = -5; player.score += 100; } else { player.lives--; resetPlayer(); } } } lvl.enemies = lvl.enemies.filter(e=>!e.dead);
 
-// ENTIDADES
-function makePlayer(x,y){
-  return { x, y, w:16, h:22, vx:0, vy:0, onGround:false, dir:1, alive:true, inv:0 };
-}
-function makeEnemy(x,y){ // goomba simples
-  return { x, y, w:18, h:18, vx:-1, vy:0, alive:true, type:'goomba', stomped:false };
-}
-function makeCoin(x,y){
-  return { x, y, r:8, take:false, pulse:0 };
-}
+// Coins for (let c of lvl.coins) { if (player.x < c.x+c.w && player.x+player.w > c.x && player.y < c.y+c.h && player.y+player.h > c.y) { c.collected = true; player.score += 10; } } lvl.coins = lvl.coins.filter(c=>!c.collected);
 
-// MENSAGENS
-const $msg = document.getElementById('msg');
-function showMsg(text, ms=1600){
-  $msg.textContent = text;
-  $msg.style.display = 'block';
-  clearTimeout(showMsg.t);
-  showMsg.t = setTimeout(()=>{ $msg.style.display='none'; }, ms);
-}
+// Level complete if (player.x > lvl.platforms[lvl.platforms.length-1].x + 200) { nextLevel(); } }
 
-// FASES (mapa simples)
-// 0 = ar, 1 = bloco chão, 2 = plataforma, 3 = bloco moeda, 4 = bandeira (fim)
-// E = inimigo, C = moeda solta
-const LEVELS = [
-  {
-    name: '1-1', start:[TILE*2, TILE*6-22],
-    width: 120, height: 12,
-    tiles: (w=120,h=12)=>{
-      const t = Array.from({length:h},()=>Array(w).fill(0));
-      // chão
-      for(let x=0;x<w;x++) for(let y=9;y<h;y++) t[y][x] = 1;
-      // plataformas
-      for(let x=10;x<18;x++) t[6][x] = 2;
-      for(let x=24;x<30;x++) t[7][x] = 2;
-      for(let x=34;x<42;x++) t[6][x] = 2;
-      // moedas em blocos
-      t[5][14]=3; t[5][15]=3; t[5][16]=3;
-      // bandeira
-      t[5][w-6]=4; t[6][w-6]=4; t[7][w-6]=4; t[8][w-6]=4; t[9][w-6]=1;
-      return t;
-    },
-    coins: [ makeCoin(15*TILE+12, (5*TILE)-10), makeCoin(25*TILE+12, (7*TILE)-10) ],
-    enemies: [ makeEnemy(22*TILE, 8*TILE-18), makeEnemy(38*TILE, 8*TILE-18) ]
-  },
-  {
-    name: '1-2', start:[TILE*2, TILE*6-22], theme:'cave',
-    width: 128, height: 12,
-    tiles: (w=128,h=12)=>{
-      const t = Array.from({length:h},()=>Array(w).fill(0));
-      for(let x=0;x<w;x++) for(let y=10;y<h;y++) t[y][x] = 1;
-      for(let x=8;x<14;x++) t[7][x] = 2;
-      for(let x=20;x<27;x++) t[6][x] = 2;
-      for(let x=40;x<52;x++) t[7][x] = 2;
-      for(let x=70;x<80;x++) t[6][x] = 2;
-      t[6][w-6]=4; t[7][w-6]=4; t[8][w-6]=4; t[9][w-6]=4; t[10][w-6]=1;
-      return t;
-    },
-    coins: [ makeCoin(9*TILE+12, (7*TILE)-10), makeCoin(21*TILE+12, (6*TILE)-10), makeCoin(71*TILE+12, (6*TILE)-10) ],
-    enemies: [ makeEnemy(26*TILE, 9*TILE-18), makeEnemy(48*TILE, 9*TILE-18), makeEnemy(76*TILE, 8*TILE-18) ]
-  }
-];
+function draw() { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#5c94fc'; ctx.fillRect(0,0,window.innerWidth,window.innerHeight);
 
-let levelIndex = 0;
-let level = null;
-let player = null;
-let coins = [];
-let enemies = [];
-let tiles = [];
-let coinsCount = 0;
-let lives = 3;
+let lvl = levels[level]; ctx.fillStyle = '#654321'; for (let plat of lvl.platforms) ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
 
-function loadLevel(i){
-  levelIndex = i % LEVELS.length;
-  level = LEVELS[levelIndex];
-  tiles = level.tiles(level.width, level.height);
-  coins = level.coins.map(c=>({...c}));
-  enemies = level.enemies.map(e=>({...e}));
-  player = makePlayer(level.start[0], level.start[1]);
-  camera.x = 0; camera.y = 0;
-  canDoubleJump = true;
-  document.getElementById('hudLevel').textContent = `Fase ${level.name}`;
-}
+for (let c of lvl.coins) ctx.drawImage(images.coin, c.x, c.y, c.w, c.h); for (let e of lvl.enemies) ctx.drawImage(images.enemy, e.x, e.y, e.w, e.h);
 
-function rectsOverlap(a,b){
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-}
+ctx.drawImage(images.player, player.x, player.y, player.w, player.h);
 
-function tileAt(px, py){
-  const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
-  if (ty < 0 || ty >= level.height || tx < 0 || tx >= level.width) return 0;
-  return tiles[ty][tx];
-}
+ctx.fillStyle = '#fff'; ctx.font = '20px sans-serif'; ctx.fillText('Score: '+player.score, 10, 20); ctx.fillText('Lives: '+player.lives, 10, 40); ctx.fillText('Level: '+(level+1), 10, 60); }
 
-function resolveCollisions(ent){
-  // Horizontal
-  ent.x += ent.vx;
-  if (ent.vx > 0) {
-    const right = ent.x + ent.w;
-    if (tileAt(right, ent.y) || tileAt(right, ent.y + ent.h - 1)) {
-      ent.x = Math.floor(right / TILE) * TILE - ent.w - 0.01;
-      ent.vx = 0;
-    }
-  } else if (ent.vx < 0) {
-    const left = ent.x;
-    if (tileAt(left, ent.y) || tileAt(left, ent.y + ent.h - 1)) {
-      ent.x = Math.floor(left / TILE + 1) * TILE + 0.01;
-      ent.vx = 0;
-    }
-  }
-  // Vertical
-  ent.y += ent.vy;
-  ent.onGround = false;
-  if (ent.vy > 0) {
-    const bottom = ent.y + ent.h;
-    if (tileAt(ent.x+2, bottom) || tileAt(ent.x+ent.w-2, bottom)) {
-      ent.y = Math.floor(bottom / TILE) * TILE - ent.h - 0.01;
-      ent.vy = 0; ent.onGround = true; canDoubleJump = true;
-    }
-  } else if (ent.vy < 0) {
-    const top = ent.y;
-    if (tileAt(ent.x+2, top) || tileAt(ent.x+ent.w-2, top)) {
-      ent.y = Math.floor(top / TILE + 1) * TILE + 0.01;
-      ent.vy = 0;
-    }
-  }
-}
+function loop() { update(); draw(); requestAnimationFrame(loop); }
 
-function updatePlayer(){
-  if (!player.alive) return;
-  // entrada
-  if (input.left) { player.vx = Math.max(player.vx - MOVE, -MAX_VX); player.dir = -1; }
-  if (input.right) { player.vx = Math.min(player.vx + MOVE,  MAX_VX); player.dir = 1; }
-  if (!input.left && !input.right) player.vx *= 0.86; // atrito lateral
+// Controls window.addEventListener('keydown', e => { if (e.key === 'ArrowLeft') keys.left = true; if (e.key === 'ArrowRight') keys.right = true; if (e.key === ' ' || e.key === 'ArrowUp') jump(); }); window.addEventListener('keyup', e => { if (e.key === 'ArrowLeft') keys.left = false; if (e.key === 'ArrowRight') keys.right = false; });
 
-  // pulo + pulo duplo
-  if (input.justJump){
-    if (player.onGround) { player.vy = -JUMP_V; }
-    else if (canDoubleJump) { player.vy = -JUMP_V*0.92; canDoubleJump = false; }
-    input.justJump = false;
-  }
+function jump() { if (player.jumps > 0) { player.vy = -10; player.jumps--; } }
 
-  // gravidade
-  player.vy = clamp(player.vy + GRAV, -MAX_VY, MAX_VY);
+document.getElementById('leftBtn').addEventListener('touchstart', ()=> keys.left = true); document.getElementById('leftBtn').addEventListener('touchend', ()=> keys.left = false); document.getElementById('rightBtn').addEventListener('touchstart', ()=> keys.right = true); document.getElementById('rightBtn').addEventListener('touchend', ()=> keys.right = false); document.getElementById('jumpBtn').addEventListener('touchstart', ()=> jump());
 
-  resolveCollisions(player);
+// Load and start audio.play().catch(()=>{}); loadImages({player:ASSETS.player, enemy:ASSETS.enemy, coin:ASSETS.coin}, ()=>{ loop(); }); </script>
 
-  // coletar moedas
-  for (const c of coins){
-    if (!c.take){
-      const dx = (player.x+player.w/2) - c.x;
-      const dy = (player.y+player.h/2) - c.y;
-      if (dx*dx + dy*dy < (c.r+10)*(c.r+10)){
-        c.take = true; coinsCount++;
-        document.getElementById('hudCoins').textContent = `Moedas: ${coinsCount}`;
-      }
-    }
-  }
-
-  // inimigos
-  for (const e of enemies){
-    if (!e.alive) continue;
-    // movimento simples
-    e.vy = clamp(e.vy + GRAV, -MAX_VY, MAX_VY);
-    e.x += e.vx; e.y += e.vy;
-    // colisão com tiles
-    const feet = { x:e.x, y:e.y, w:e.w, h:e.h };
-    // chão
-    if (tileAt(e.x+2, e.y+e.h) || tileAt(e.x+e.w-2, e.y+e.h)){
-      e.y = Math.floor((e.y+e.h)/TILE)*TILE - e.h - 0.01; e.vy = 0;
-    }
-    // parede direita/esquerda
-    if (tileAt(e.x+e.w, e.y) || tileAt(e.x+e.w, e.y+e.h-1)) { e.vx = -Math.abs(e.vx); }
-    if (tileAt(e.x, e.y) || tileAt(e.x, e.y+e.h-1)) { e.vx = Math.abs(e.vx); }
-
-    // colisão jogador x inimigo
-    if (rectsOverlap(player, e)){
-      const stomp = (player.vy > 1 && player.y + player.h - e.y < 14);
-      if (stomp){
-        e.alive = false; e.stomped = true; player.vy = -JUMP_V*0.7; // quica
-      } else if (player.inv<=0){
-        // dano
-        lives--; player.inv = 60; showMsg('Ouch!');
-        document.getElementById('hudLives').textContent = `Vidas: ${lives}`;
-        if (lives<=0){
-          showMsg('Game Over');
-          setTimeout(()=>loadLevel(0), 900);
-        } else {
-          // reposiciona
-          player.x = level.start[0]; player.y = level.start[1]; player.vx=0; player.vy=0;
-        }
-      }
-    }
-  }
-
-  if (player.inv>0) player.inv--;
-
-  // tocar bandeira (fim)
-  const tFlag = tileAt(player.x+player.w/2, player.y+player.h/2);
-  if (tFlag===4){
-    showMsg('Fase completa!');
-    setTimeout(()=>{ loadLevel(levelIndex+1); }, 800);
-  }
-
-  // keep camera following
-  const targetCamX = clamp(player.x - cvs.width/2 + 60, 0, level.width*TILE - cvs.width);
-  camera.x = lerp(camera.x, targetCamX, 0.12);
-}
-
-function drawBG(){
-  // céu
-  ctx.fillStyle = (level && level.theme==='cave') ? '#223' : getComputedStyle(document.documentElement).getPropertyValue('--bg');
-  ctx.fillRect(0,0,cvs.width,cvs.height);
-  // montinhos simples
-  if (!level || level.theme!=='cave'){
-    ctx.fillStyle = '#ffffff22';
-    for(let i=0;i<6;i++){
-      const x = (i*120 - (camera.x*0.2)%120);
-      ctx.beginPath(); ctx.arc(x, 50, 18, 0, TAU); ctx.fill();
-      ctx.beginPath(); ctx.arc(x+20, 58, 14, 0, TAU); ctx.fill();
-    }
-  }
-}
-
-function drawTiles(){
-  for(let y=0;y<level.height;y++){
-    for(let x=0;x<level.width;x++){
-      const id = tiles[y][x]; if (!id) continue;
-      const sx = x*TILE - camera.x, sy = y*TILE - camera.y;
-      if (sx<-TILE || sx>cvs.width || sy<-TILE || sy>cvs.height) continue;
-      if (id===1){ // chão
-        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ground');
-        ctx.fillRect(sx, sy, TILE, TILE);
-        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--grass');
-        ctx.fillRect(sx, sy, TILE, 4);
-      } else if (id===2){ // plataforma
-        ctx.fillStyle = '#b07b33'; ctx.fillRect(sx, sy, TILE, TILE/2);
-      } else if (id===3){ // bloco com moeda
-        ctx.fillStyle = '#c97b2b'; ctx.fillRect(sx+2, sy+2, TILE-4, TILE-4);
-        ctx.fillStyle = '#fff'; ctx.fillRect(sx+8, sy+8, 8, 8);
-      } else if (id===4){ // bandeira
-        ctx.fillStyle = '#ddd'; ctx.fillRect(sx+9, sy, 2, TILE);
-        ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.moveTo(sx+11, sy); ctx.lineTo(sx+22, sy+6); ctx.lineTo(sx+11, sy+12); ctx.closePath(); ctx.fill();
-      }
-    }
-  }
-}
-
-function drawCoins(){
-  for (const c of coins){
-    c.pulse += 0.1;
-    if (c.take) continue;
-    const x = c.x - camera.x, y = c.y - camera.y;
-    ctx.save();
-    ctx.translate(x, y + Math.sin(c.pulse)*2);
-    ctx.beginPath();
-    ctx.arc(0,0,c.r,0,TAU);
-    ctx.fillStyle = '#ffd54a';
-    ctx.fill();
-    ctx.restore();
-  }
-}
-
-function drawEnemies(){
-  for (const e of enemies){
-    if (!e.alive && !e.stomped) continue;
-    const x = Math.floor(e.x - camera.x), y = Math.floor(e.y - camera.y);
-    if (e.stomped){
-      ctx.fillStyle = '#6b3e1e'; ctx.fillRect(x, y+e.h-6, e.w, 6);
-    } else {
-      ctx.fillStyle = '#8b5a2b'; ctx.fillRect(x, y, e.w, e.h);
-      ctx.fillStyle = '#000'; ctx.fillRect(x+4, y+6, 4, 4); ctx.fillRect(x+e.w-8, y+6, 4,4);
-    }
-  }
-}
-
-function drawPlayer(){
-  const x = Math.floor(player.x - camera.x), y = Math.floor(player.y - camera.y);
-  // pisca quando invencível
-  if (player.inv>0 && Math.floor(player.inv/4)%2===0) return;
-  ctx.save();
-  ctx.translate(x + player.w/2, y + player.h/2);
-  ctx.scale(player.dir, 1);
-  ctx.translate(-player.w/2, -player.h/2);
-  ctx.fillStyle = '#f04';
-  ctx.fillRect(0,0,player.w,player.h);
-  ctx.fillStyle = '#fff'; ctx.fillRect(3,5,4,4); // olho
-  ctx.restore();
-}
-
-function draw(){
-  drawBG();
-  drawTiles();
-  drawCoins();
-  drawEnemies();
-  drawPlayer();
-}
-
-function step(){
-  updatePlayer();
-  draw();
-  requestAnimationFrame(step);
-}
-
-// Init
-loadLevel(0);
-requestAnimationFrame(step);
-
-// Dicas na tela
-showMsg('Toque: ⟵ Pular ⟶');
-  </script></body>
+</body>
 </html>
